@@ -27,7 +27,9 @@ export function Sidebar({ mobile = false, onNavigate }: SidebarProps) {
             <p className="text-xs uppercase tracking-[0.24em] text-zinc-400">
               Portfólio pessoal
             </p>
-            <h1 className="text-xl font-semibold text-white">Wesley Farias</h1>
+            <h1 className="text-xl font-semibold text-white">
+              CRM - Wesley Farias
+            </h1>
           </div>
         </div>
       </div>

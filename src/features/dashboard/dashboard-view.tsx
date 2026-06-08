@@ -63,7 +63,7 @@ export default function DashboardView() {
           <Badge variant="info">Portfólio pessoal</Badge>
           <div className="mt-5 max-w-3xl space-y-4">
             <h1 className="text-3xl font-semibold text-zinc-950 md:text-4xl">
-              Wesley Farias
+              CRM - Wesley Farias
             </h1>
             <p className="text-base leading-7 text-zinc-600">
               Desenvolvedor frontend com foco em interfaces modernas,

@@ -15,8 +15,8 @@ const roboto = Roboto({
 });
 
 export const metadata: Metadata = {
-  title: "Wesley Farias | Portfolio",
-  description: "Portfolio pessoal de Wesley Farias, desenvolvedor frontend.",
+  title: "CRM - Wesley Farias",
+  description: "CRM pessoal de Wesley Farias, desenvolvedor frontend.",
 };
 
 export default function RootLayout({

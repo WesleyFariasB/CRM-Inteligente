@@ -23,7 +23,9 @@ export function Topbar({ onMenuClick }: TopbarProps) {
           <p className="text-xs uppercase tracking-[0.24em] text-zinc-500">
             Portfólio pessoal
           </p>
-          <h2 className="text-lg font-semibold text-zinc-950">Wesley Farias</h2>
+          <h2 className="text-lg font-semibold text-zinc-950">
+            CRM - Wesley Farias
+          </h2>
         </div>
       </div>
 

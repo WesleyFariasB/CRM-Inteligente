@@ -1,6 +1,6 @@
-# Wesley Farias Portfolio
+# CRM - Wesley Farias
 
-Portfólio pessoal em Next.js para apresentar projetos, competências e contato profissional de Wesley Farias.
+CRM pessoal em Next.js para apresentar projetos, competências e contato profissional de Wesley Farias.
 
 ## Scripts
 
