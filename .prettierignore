@@ -5,3 +5,4 @@ coverage
 .turbo
 package-lock.json
 CRM-Inteligente-Frontend
+apps/web/next-env.d.ts
