@@ -1,0 +1,34 @@
+{
+  "name": "crm-inteligente",
+  "version": "0.1.0",
+  "private": true,
+  "description": "CRM multiempresa preparado para crescimento.",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=22.0.0",
+    "npm": ">=10.0.0"
+  },
+  "scripts": {
+    "dev": "npm run dev --workspaces --if-present",
+    "build": "npm run build --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "type-check": "npm run type-check --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "test:e2e": "npm run test:e2e --workspace=@crm/api",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "db:generate": "npm run db:generate --workspace=@crm/api",
+    "db:migrate": "npm run db:migrate --workspace=@crm/api",
+    "db:seed": "npm run db:seed --workspace=@crm/api"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "eslint": "^9.39.1",
+    "prettier": "^3.7.4",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.47.0"
+  }
+}

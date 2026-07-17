@@ -1,0 +1,7 @@
+node_modules
+dist
+coverage
+.next
+.turbo
+package-lock.json
+CRM-Inteligente-Frontend
