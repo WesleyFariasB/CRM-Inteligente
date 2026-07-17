@@ -1,0 +1,14 @@
+{
+  "name": "@crm/ui",
+  "version": "0.1.0",
+  "private": true,
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "lint": "eslint src/**/*.ts",
+    "type-check": "tsc --noEmit",
+    "test": "echo 'No tests defined for shared UI primitives'"
+  }
+}
