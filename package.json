@@ -7,6 +7,12 @@
     "apps/*",
     "packages/*"
   ],
+  "overrides": {
+    "next": {
+      "postcss": "8.5.19",
+      "sharp": "0.35.3"
+    }
+  },
   "engines": {
     "node": ">=22.0.0",
     "npm": ">=10.0.0"
@@ -18,6 +24,7 @@
     "type-check": "npm run type-check --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
     "test:e2e": "npm run test:e2e --workspace=@crm/api",
+    "audit:prod": "node scripts/audit-production.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "db:generate": "npm run db:generate --workspace=@crm/api",

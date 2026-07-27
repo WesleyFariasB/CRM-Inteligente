@@ -17,6 +17,9 @@ const environmentSchema = z.object({
     .default('development-refresh-secret-change-before-production'),
   JWT_ACCESS_TTL: z.string().default('15m'),
   JWT_REFRESH_TTL: z.string().default('7d'),
+  JWT_ISSUER: z.string().default('crm-inteligente-api'),
+  JWT_AUDIENCE: z.string().default('crm-inteligente-web'),
+  COOKIE_SECURE: z.coerce.boolean().default(false),
   CORS_ORIGIN: z.string().default('http://localhost:3000'),
   ENABLE_SWAGGER: z.coerce.boolean().default(true),
 });
@@ -37,6 +40,10 @@ export function validateEnvironment(config: Record<string, unknown>): Environmen
 
   if (environment.NODE_ENV === 'production' && usesDevelopmentSecrets) {
     throw new Error('Production requires non-default JWT secrets.');
+  }
+
+  if (environment.NODE_ENV === 'production' && !environment.COOKIE_SECURE) {
+    throw new Error('Production requires secure session cookies.');
   }
 
   return environment;
