@@ -16,7 +16,7 @@ describe('Health endpoint (e2e)', () => {
   });
 
   afterAll(async () => {
-    await app.close();
+    if (app) await app.close();
   });
 
   it('GET /api/v1/health returns a safe liveness payload', async () => {
@@ -27,5 +27,11 @@ describe('Health endpoint (e2e)', () => {
         expect(body).toMatchObject({ status: 'ok', service: 'api' });
         expect(typeof body.timestamp).toBe('string');
       });
+  });
+
+  it('rejects protected resources without a bearer token', async () => {
+    await request(app.getHttpServer() as Server)
+      .get('/api/v1/auth/me')
+      .expect(401);
   });
 });

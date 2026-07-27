@@ -39,4 +39,4 @@ jobs:
       - name: Build
         run: npm run build
       - name: Dependency audit
-        run: npm audit --omit=dev --audit-level=high
+        run: npm run audit:prod

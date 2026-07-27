@@ -1,52 +1,33 @@
 # CRM Inteligente
 
-Base de um CRM multiempresa, seguro e modular. Esta primeira entrega implementa a infraestrutura de desenvolvimento: monorepo npm, aplicação web Next.js, API NestJS, Prisma/PostgreSQL, Redis, Docker Compose, testes e CI.
+CRM multiempresa para captação, relacionamento e vendas. Esta versão reúne autenticação, RBAC, isolamento por organização, leads, empresas, contatos, pipeline, tarefas, relatórios, notificações, automações e auditoria.
 
-## Arquitetura
+## Stack
 
-```text
-apps/
-  api/                 # REST API NestJS e Prisma
-  web/                 # Next.js App Router
-packages/
-  config/              # Constantes compartilhadas
-  types/               # Contratos TypeScript compartilhados
-  ui/                  # Primitivos visuais compartilhados (evolui na etapa 4)
-docs/
-  architecture.md      # Decisões e fronteiras técnicas
-  roadmap.md           # Entregas incrementais
-  security.md          # Controles de segurança
-```
+- Web: Next.js, React, TypeScript, Tailwind, TanStack Query/Table, React Hook Form, Zod, Zustand, Recharts e Lucide.
+- API: NestJS REST, Prisma, PostgreSQL, JWT, refresh token rotativo em cookie HttpOnly, Argon2id e Swagger.
+- Operação: Docker Compose com PostgreSQL/Redis, migrations Prisma, Jest, Supertest, Cypress e GitHub Actions.
 
-Leia [a arquitetura](docs/architecture.md), [o roadmap](docs/roadmap.md) e [os controles de segurança](docs/security.md) antes de iniciar um módulo de negócio.
+## Início local
 
-## Requisitos
-
-- Node.js 24+
-- npm 10+
-- Docker Desktop (recomendado para PostgreSQL e Redis)
-
-## Início rápido
-
-```bash
+```powershell
 Copy-Item .env.example .env
-npm install
 docker compose up -d postgres redis
+npm ci
 npm run db:generate
-npm run db:migrate -- --name init
-npm run db:seed
+npx prisma migrate deploy --schema apps/api/prisma/schema.prisma
 npm run dev
 ```
 
 - Web: `http://localhost:3000`
 - API: `http://localhost:3001/api/v1/health`
-- Swagger (desenvolvimento): `http://localhost:3001/docs`
+- OpenAPI/Swagger: `http://localhost:3001/docs` em desenvolvimento
 
-Para executar tudo em containers, use `docker compose up --build`.
+Crie a primeira organização em `/register`. Esse usuário recebe o papel `OWNER` e o pipeline padrão.
 
 ## Qualidade
 
-```bash
+```powershell
 npm run format:check
 npm run lint
 npm run type-check
@@ -55,10 +36,14 @@ npm run test:e2e
 npm run build
 ```
 
-## Variáveis de ambiente
+O smoke E2E do navegador está em `apps/web/cypress/e2e`; com API/web locais ativos, execute `npm run test:e2e --workspace=@crm/web`.
 
-O arquivo [.env.example](.env.example) lista todas as variáveis locais. Nunca versione `.env`, tokens, chaves ou credenciais de produção.
+## Segurança e multiempresa
 
-## Escopo atual
+Todo registro de negócio contém `organizationId`, e os serviços filtram esse escopo a partir do token, nunca de dados enviados pelo cliente. O backend aplica permissões por guard, registra ações auditáveis e usa soft delete nos agregados aplicáveis. Tokens de acesso ficam apenas em memória no browser; a recuperação de sessão usa cookie HttpOnly rotativo.
 
-Esta entrega é intencionalmente apenas a Etapa 1. Autenticação, RBAC, isolamento aplicado às consultas, telas de CRM e automações entram nas etapas subsequentes, sempre com testes e migrações próprias.
+Antes da produção, defina segredos JWT exclusivos, `COOKIE_SECURE=true`, CORS real, HTTPS, backup do PostgreSQL, Redis gerenciado e um provedor de e-mail para convites/recuperação de senha.
+
+## Dependências auditadas
+
+`npm audit --omit=dev` está registrado no CI. Na data desta entrega, o registro do npm ainda sinaliza três alertas altos sem atualização compatível para o pacote interno `postcss`/`sharp` distribuído pelo Next.js 16.2.12; o restante das dependências de produção foi atualizado. Não há `npm audit fix` seguro para eles sem retroceder o Next para uma versão incompatível. Acompanhe a correção upstream antes do deploy público.

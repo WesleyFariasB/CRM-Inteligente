@@ -1,18 +1,655 @@
 generator client {
   provider = "prisma-client-js"
 }
+
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-/// Base multi-tenant entity. Stage 2 adds users, memberships and sessions.
+enum MembershipRole {
+  OWNER
+  ADMIN
+  MANAGER
+  SELLER
+  SUPPORT
+  ANALYST
+  VIEWER
+}
+
+enum LeadStatus {
+  NEW
+  QUALIFYING
+  CONTACTED
+  NURTURING
+  CONVERTED
+  LOST
+  ARCHIVED
+}
+
+enum LeadTemperature {
+  COLD
+  WARM
+  HOT
+}
+
+enum OpportunityStatus {
+  OPEN
+  WON
+  LOST
+}
+
+enum ActivityType {
+  CALL
+  EMAIL
+  MESSAGE
+  MEETING
+  VISIT
+  NOTE
+}
+
+enum ActivityStatus {
+  PLANNED
+  COMPLETED
+  CANCELED
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  DONE
+  CANCELED
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum NotificationType {
+  ASSIGNMENT
+  TASK_DUE
+  TASK_OVERDUE
+  MEETING_REMINDER
+  OPPORTUNITY_STALE
+  STAGE_CHANGED
+  GOAL_REACHED
+  AUTOMATION_ERROR
+  INVITATION
+  PERMISSION_CHANGED
+}
+
+enum AutomationStatus {
+  ACTIVE
+  PAUSED
+  DRAFT
+}
+
+enum AutomationRunStatus {
+  QUEUED
+  RUNNING
+  SUCCEEDED
+  FAILED
+  SKIPPED
+}
+
 model Organization {
-  id        String   @id @default(cuid())
-  name      String
-  slug      String   @unique
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                String                    @id @default(cuid())
+  name              String
+  slug              String                    @unique
+  timezone          String                    @default("America/Sao_Paulo")
+  settings          Json                      @default("{}")
+  createdAt         DateTime                  @default(now())
+  updatedAt         DateTime                  @updatedAt
+  deletedAt         DateTime?
+  memberships       Membership[]
+  sessions          Session[]
+  teams             Team[]
+  leads             Lead[]
+  companies         Company[]
+  contacts          Contact[]
+  pipelines         Pipeline[]
+  opportunities     Opportunity[]
+  activities        Activity[]
+  tasks             Task[]
+  notes             Note[]
+  notifications     Notification[]
+  automations       Automation[]
+  automationRuns    AutomationRun[]
+  auditLogs         AuditLog[]
+  products          Product[]
+  opportunityStages OpportunityStageHistory[]
 
   @@map("organizations")
+}
+
+model User {
+  id                      String                   @id @default(cuid())
+  name                    String
+  email                   String                   @unique
+  passwordHash            String
+  avatarUrl               String?
+  title                   String?
+  isActive                Boolean                  @default(true)
+  emailVerifiedAt         DateTime?
+  lastLoginAt             DateTime?
+  failedLoginAttempts     Int                      @default(0)
+  lockedUntil             DateTime?
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+  deletedAt               DateTime?
+  memberships             Membership[]
+  sessions                Session[]
+  passwordResetTokens     PasswordResetToken[]
+  emailVerificationTokens EmailVerificationToken[]
+  notifications           Notification[]
+  auditLogs               AuditLog[]
+  createdLeads            Lead[]                   @relation("LeadCreator")
+  createdCompanies        Company[]                @relation("CompanyCreator")
+  createdContacts         Contact[]                @relation("ContactCreator")
+  createdOpportunities    Opportunity[]            @relation("OpportunityCreator")
+  assignedLeads           Lead[]                   @relation("LeadAssignee")
+  assignedCompanies       Company[]                @relation("CompanyOwner")
+  assignedContacts        Contact[]                @relation("ContactOwner")
+  assignedOpportunities   Opportunity[]            @relation("OpportunityOwner")
+  assignedTasks           Task[]                   @relation("TaskAssignee")
+  createdTasks            Task[]                   @relation("TaskCreator")
+  createdActivities       Activity[]               @relation("ActivityCreator")
+  createdNotes            Note[]                   @relation("NoteCreator")
+
+  @@index([isActive, deletedAt])
+  @@map("users")
+}
+
+model Membership {
+  id             String         @id @default(cuid())
+  organizationId String
+  userId         String
+  role           MembershipRole @default(VIEWER)
+  permissions    String[]       @default([])
+  teamId         String?
+  invitedAt      DateTime?
+  acceptedAt     DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  user           User           @relation(fields: [userId], references: [id], onDelete: Restrict)
+  team           Team?          @relation(fields: [teamId], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, userId])
+  @@index([organizationId, role])
+  @@index([teamId])
+  @@map("memberships")
+}
+
+model Session {
+  id             String       @id @default(cuid())
+  userId         String
+  organizationId String
+  tokenHash      String       @unique
+  userAgent      String?
+  ipAddress      String?
+  expiresAt      DateTime
+  revokedAt      DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([userId, revokedAt, expiresAt])
+  @@index([organizationId])
+  @@map("sessions")
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+  @@map("password_reset_tokens")
+}
+
+model EmailVerificationToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+  @@map("email_verification_tokens")
+}
+
+model Team {
+  id             String       @id @default(cuid())
+  organizationId String
+  name           String
+  description    String?
+  managerId      String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  deletedAt      DateTime?
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  memberships    Membership[]
+
+  @@unique([organizationId, name])
+  @@index([organizationId, deletedAt])
+  @@map("teams")
+}
+
+model Lead {
+  id                String          @id @default(cuid())
+  organizationId    String
+  name              String
+  email             String?
+  phone             String?
+  whatsapp          String?
+  jobTitle          String?
+  source            String?
+  campaign          String?
+  status            LeadStatus      @default(NEW)
+  temperature       LeadTemperature @default(COLD)
+  score             Int             @default(0)
+  interest          String?
+  tags              String[]        @default([])
+  notes             String?
+  consentAt         DateTime?
+  customFields      Json            @default("{}")
+  assigneeId        String?
+  createdById       String
+  companyId         String?
+  convertedAt       DateTime?
+  lostReason        String?
+  lastInteractionAt DateTime?
+  nextActionAt      DateTime?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  deletedAt         DateTime?
+  organization      Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  company           Company?        @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  assignee          User?           @relation("LeadAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  createdBy         User            @relation("LeadCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  activities        Activity[]
+  tasks             Task[]
+  timelineNotes     Note[]
+  opportunities     Opportunity[]
+
+  @@index([organizationId, status, deletedAt])
+  @@index([organizationId, assigneeId, deletedAt])
+  @@index([organizationId, email])
+  @@index([companyId])
+  @@map("leads")
+}
+
+model Company {
+  id             String        @id @default(cuid())
+  organizationId String
+  legalName      String?
+  name           String
+  document       String?
+  segment        String?
+  size           String?
+  website        String?
+  phone          String?
+  email          String?
+  address        Json          @default("{}")
+  status         String?
+  tags           String[]      @default([])
+  notes          String?
+  customFields   Json          @default("{}")
+  ownerId        String?
+  createdById    String
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  deletedAt      DateTime?
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner          User?         @relation("CompanyOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  createdBy      User          @relation("CompanyCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  contacts       Contact[]
+  leads          Lead[]
+  opportunities  Opportunity[]
+  activities     Activity[]
+  tasks          Task[]
+  timelineNotes  Note[]
+
+  @@index([organizationId, deletedAt])
+  @@index([organizationId, document])
+  @@map("companies")
+}
+
+model Contact {
+  id                String        @id @default(cuid())
+  organizationId    String
+  name              String
+  jobTitle          String?
+  department        String?
+  email             String?
+  phone             String?
+  whatsapp          String?
+  preferredChannel  String?
+  tags              String[]      @default([])
+  customFields      Json          @default("{}")
+  companyId         String?
+  ownerId           String?
+  createdById       String
+  lastInteractionAt DateTime?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  deletedAt         DateTime?
+  organization      Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  company           Company?      @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  owner             User?         @relation("ContactOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  createdBy         User          @relation("ContactCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  activities        Activity[]
+  tasks             Task[]
+  timelineNotes     Note[]
+  opportunities     Opportunity[]
+
+  @@index([organizationId, deletedAt])
+  @@index([organizationId, email])
+  @@index([companyId])
+  @@map("contacts")
+}
+
+model Pipeline {
+  id             String          @id @default(cuid())
+  organizationId String
+  name           String
+  description    String?
+  isDefault      Boolean         @default(false)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  deletedAt      DateTime?
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  stages         PipelineStage[]
+  opportunities  Opportunity[]
+
+  @@unique([organizationId, name])
+  @@index([organizationId, deletedAt])
+  @@map("pipelines")
+}
+
+model PipelineStage {
+  id             String                    @id @default(cuid())
+  pipelineId     String
+  name           String
+  position       Int
+  probability    Int                       @default(0)
+  maxDays        Int?
+  isWon          Boolean                   @default(false)
+  isLost         Boolean                   @default(false)
+  color          String                    @default("#3b82f6")
+  createdAt      DateTime                  @default(now())
+  updatedAt      DateTime                  @updatedAt
+  pipeline       Pipeline                  @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+  opportunities  Opportunity[]
+  stageHistories OpportunityStageHistory[]
+
+  @@unique([pipelineId, position])
+  @@index([pipelineId])
+  @@map("pipeline_stages")
+}
+
+model Opportunity {
+  id                String                    @id @default(cuid())
+  organizationId    String
+  title             String
+  value             Decimal                   @db.Decimal(14, 2)
+  probability       Int                       @default(0)
+  expectedCloseDate DateTime?
+  status            OpportunityStatus         @default(OPEN)
+  source            String?
+  tags              String[]                  @default([])
+  competitors       String[]                  @default([])
+  lostReason        String?
+  notes             String?
+  customFields      Json                      @default("{}")
+  pipelineId        String
+  stageId           String
+  companyId         String?
+  contactId         String?
+  leadId            String?
+  ownerId           String?
+  createdById       String
+  wonAt             DateTime?
+  lostAt            DateTime?
+  createdAt         DateTime                  @default(now())
+  updatedAt         DateTime                  @updatedAt
+  deletedAt         DateTime?
+  organization      Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  pipeline          Pipeline                  @relation(fields: [pipelineId], references: [id], onDelete: Restrict)
+  stage             PipelineStage             @relation(fields: [stageId], references: [id], onDelete: Restrict)
+  company           Company?                  @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  contact           Contact?                  @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  lead              Lead?                     @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  owner             User?                     @relation("OpportunityOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  createdBy         User                      @relation("OpportunityCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  products          OpportunityProduct[]
+  activities        Activity[]
+  tasks             Task[]
+  timelineNotes     Note[]
+  stageHistory      OpportunityStageHistory[]
+
+  @@index([organizationId, pipelineId, stageId, deletedAt])
+  @@index([organizationId, ownerId, status, deletedAt])
+  @@map("opportunities")
+}
+
+model OpportunityStageHistory {
+  id             String        @id @default(cuid())
+  organizationId String
+  opportunityId  String
+  stageId        String
+  changedById    String
+  enteredAt      DateTime      @default(now())
+  leftAt         DateTime?
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  opportunity    Opportunity   @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  stage          PipelineStage @relation(fields: [stageId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, opportunityId, enteredAt])
+  @@map("opportunity_stage_history")
+}
+
+model Product {
+  id             String               @id @default(cuid())
+  organizationId String
+  name           String
+  sku            String?
+  description    String?
+  unitPrice      Decimal              @db.Decimal(14, 2)
+  isActive       Boolean              @default(true)
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  deletedAt      DateTime?
+  organization   Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  opportunities  OpportunityProduct[]
+
+  @@unique([organizationId, sku])
+  @@index([organizationId, deletedAt])
+  @@map("products")
+}
+
+model OpportunityProduct {
+  id            String      @id @default(cuid())
+  opportunityId String
+  productId     String
+  quantity      Int         @default(1)
+  unitPrice     Decimal     @db.Decimal(14, 2)
+  discount      Decimal     @default(0) @db.Decimal(14, 2)
+  opportunity   Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  product       Product     @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@unique([opportunityId, productId])
+  @@map("opportunity_products")
+}
+
+model Activity {
+  id              String         @id @default(cuid())
+  organizationId  String
+  type            ActivityType
+  title           String
+  description     String?
+  status          ActivityStatus @default(PLANNED)
+  scheduledAt     DateTime
+  durationMinutes Int?
+  result          String?
+  reminderAt      DateTime?
+  participants    String[]       @default([])
+  createdById     String
+  leadId          String?
+  companyId       String?
+  contactId       String?
+  opportunityId   String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  deletedAt       DateTime?
+  organization    Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy       User           @relation("ActivityCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  lead            Lead?          @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  company         Company?       @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  contact         Contact?       @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  opportunity     Opportunity?   @relation(fields: [opportunityId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, scheduledAt, deletedAt])
+  @@map("activities")
+}
+
+model Task {
+  id             String       @id @default(cuid())
+  organizationId String
+  title          String
+  description    String?
+  status         TaskStatus   @default(TODO)
+  priority       TaskPriority @default(MEDIUM)
+  dueAt          DateTime?
+  completedAt    DateTime?
+  assigneeId     String?
+  createdById    String
+  leadId         String?
+  companyId      String?
+  contactId      String?
+  opportunityId  String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  deletedAt      DateTime?
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  assignee       User?        @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  createdBy      User         @relation("TaskCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  lead           Lead?        @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  company        Company?     @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  contact        Contact?     @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  opportunity    Opportunity? @relation(fields: [opportunityId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, assigneeId, dueAt, deletedAt])
+  @@index([organizationId, status, deletedAt])
+  @@map("tasks")
+}
+
+model Note {
+  id             String       @id @default(cuid())
+  organizationId String
+  body           String
+  createdById    String
+  leadId         String?
+  companyId      String?
+  contactId      String?
+  opportunityId  String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  deletedAt      DateTime?
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy      User         @relation("NoteCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  lead           Lead?        @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  company        Company?     @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  contact        Contact?     @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  opportunity    Opportunity? @relation(fields: [opportunityId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, createdAt, deletedAt])
+  @@map("notes")
+}
+
+model Notification {
+  id             String           @id @default(cuid())
+  organizationId String
+  userId         String
+  type           NotificationType
+  title          String
+  body           String
+  priority       TaskPriority     @default(MEDIUM)
+  href           String?
+  readAt         DateTime?
+  createdAt      DateTime         @default(now())
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, userId, readAt, createdAt])
+  @@map("notifications")
+}
+
+model Automation {
+  id             String           @id @default(cuid())
+  organizationId String
+  name           String
+  description    String?
+  trigger        String
+  conditions     Json             @default("[]")
+  actions        Json             @default("[]")
+  status         AutomationStatus @default(DRAFT)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  deletedAt      DateTime?
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  runs           AutomationRun[]
+
+  @@index([organizationId, status, deletedAt])
+  @@map("automations")
+}
+
+model AutomationRun {
+  id             String              @id @default(cuid())
+  organizationId String
+  automationId   String
+  idempotencyKey String
+  status         AutomationRunStatus @default(QUEUED)
+  startedAt      DateTime?
+  finishedAt     DateTime?
+  errorMessage   String?
+  payload        Json                @default("{}")
+  createdAt      DateTime            @default(now())
+  organization   Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  automation     Automation          @relation(fields: [automationId], references: [id], onDelete: Cascade)
+
+  @@unique([automationId, idempotencyKey])
+  @@index([organizationId, status, createdAt])
+  @@map("automation_runs")
+}
+
+model AuditLog {
+  id             String       @id @default(cuid())
+  organizationId String
+  userId         String?
+  action         String
+  entity         String
+  entityId       String?
+  ipAddress      String?
+  userAgent      String?
+  before         Json?
+  after          Json?
+  createdAt      DateTime     @default(now())
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, entity, entityId, createdAt])
+  @@index([userId, createdAt])
+  @@map("audit_logs")
 }
